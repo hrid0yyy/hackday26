@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     # Supabase Configuration
     SUPABASE_URL: str
     SUPABASE_KEY: str  # anon/public key (respects RLS)
+    SUPABASE_SERVICE_ROLE_KEY: str  # service_role key (bypasses RLS)
     
     # Email Verification Settings
     REQUIRE_EMAIL_VERIFICATION: bool = False  # Set to True in production

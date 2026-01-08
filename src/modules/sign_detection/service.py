@@ -10,11 +10,16 @@ import io
 import time
 from functools import cached_property
 from typing import TypedDict
+from datetime import datetime
+import uuid
 
 from PIL import Image
 from transformers import pipeline
+from supabase import Client
+from openai import AsyncOpenAI
 
 from src.core.config import settings
+from src.core.db import get_supabase_admin_client
 
 
 class PredictionResult(TypedDict):
@@ -147,6 +152,87 @@ class SignLanguageService:
         Call this during application startup.
         """
         _ = self.model  # Access cached_property to trigger loading
+
+    async def clean_text_with_llm(self, raw_text: str) -> str:
+        """Clean raw sign detection text using LLM.
+        
+        Args:
+            raw_text: Raw text from sign detection (e.g., "iaammmliikee")
+            
+        Returns:
+            Cleaned text that preserves the original message
+        """
+        client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+        
+        prompt = f"""You are a text correction assistant for sign language detection.
+
+The user performed sign language gestures that were detected as: "{raw_text}"
+
+This text has issues like:
+- Repeated letters (e.g., "aaa" should be "a")
+- Missing spaces between words
+- Potential misspellings from detection errors
+
+Your task:
+1. Fix repeated letters and add proper spacing
+2. Correct obvious spelling mistakes
+3. STRICTLY preserve the original message intent - do NOT change the meaning
+4. If unsure, keep the original text
+5. Return ONLY the cleaned text, nothing else
+
+Examples:
+- "iaammmliikee" → "i am like"
+- "heeelloowwoorrlld" → "hello world"
+- "iaamhriidoy" → "i am hridoy"
+
+Now clean this text: "{raw_text}"
+
+Cleaned text:"""
+
+        response = await client.chat.completions.create(
+            model=settings.OPENAI_MODEL,
+            messages=[
+                {"role": "system", "content": "You are a text correction assistant. Return only the cleaned text."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.3,
+            max_tokens=100
+        )
+        
+        cleaned_text = response.choices[0].message.content.strip()
+        return cleaned_text
+
+    async def save_detection_record(
+        self,
+        raw_text: str,
+        cleaned_text: str,
+        sender_id: str,
+        receiver_id: str
+    ) -> dict:
+        """Save conversation message to Supabase.
+        
+        Args:
+            raw_text: Original raw text from detection
+            cleaned_text: LLM-cleaned text
+            sender_id: ID of user who sent the message
+            receiver_id: ID of user receiving the message
+            
+        Returns:
+            Saved message data
+        """
+        supabase: Client = get_supabase_admin_client()
+        
+        record = {
+            "id": str(uuid.uuid4()),
+            "sender_id": sender_id,
+            "receiver_id": receiver_id,
+            "raw_text": raw_text,
+            "cleaned_text": cleaned_text,
+            "created_at": datetime.utcnow().isoformat()
+        }
+        
+        result = supabase.table("chat_conversation").insert(record).execute()
+        return result.data[0] if result.data else record
 
 
 # Global service instance

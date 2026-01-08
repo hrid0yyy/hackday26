@@ -47,7 +47,8 @@ class AuthenticationService:
                 "password": request.password,
                 "options": {
                     "data": {
-                        "full_name": request.full_name
+                        "full_name": request.full_name,
+                        "status": request.status
                     },
                     "email_redirect_to": None  # Disable email verification
                 }
@@ -58,6 +59,18 @@ class AuthenticationService:
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Failed to create user account"
                 )
+            
+            # Create profile record in profiles table
+            try:
+                profile_data = {
+                    "id": response.user.id,
+                    "status": request.status or "normal"
+                }
+                self.supabase.table("profiles").insert(profile_data).execute()
+            except Exception as profile_error:
+                # If profile creation fails, log but don't fail signup
+                # The user is already created in auth.users
+                print(f"Warning: Failed to create profile: {profile_error}")
             
             # Use Supabase's JWT tokens directly
             access_token = response.session.access_token
