@@ -11,6 +11,15 @@ class SignUpRequest(BaseModel):
     email: EmailStr = Field(..., description="User email address")
     password: str = Field(..., min_length=8, max_length=100, description="User password")
     full_name: Optional[str] = Field(None, max_length=100, description="User's full name")
+    status: Optional[str] = Field("normal", description="User status (mute, deaf, blind, normal)")
+    
+    @validator('status')
+    def validate_status(cls, v):
+        """Validate status is one of allowed values."""
+        allowed = ['mute', 'deaf', 'blind', 'normal']
+        if v not in allowed:
+            raise ValueError(f'Status must be one of: {", ".join(allowed)}')
+        return v
     
     @validator('password')
     def validate_password(cls, v):
