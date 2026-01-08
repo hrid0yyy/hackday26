@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from src.core.config import settings
 from src.modules.authentication import router as auth_router
 from src.modules.chatbot import router as chat_router
-
+from src.modules.sign_detection import router as sign_detection_router
 
 # Create FastAPI app
 app = FastAPI(
@@ -28,6 +28,15 @@ app.add_middleware(
 # Include routers
 app.include_router(auth_router)
 app.include_router(chat_router)
+
+app.include_router(sign_detection_router)
+
+# Optional: Warmup the model at startup
+@app.on_event("startup")
+async def startup_event():
+    from src.modules.sign_detection.service import get_service_instance
+    service = get_service_instance()
+    service.warmup()
 
 
 @app.get("/", tags=["Root"])

@@ -1,0 +1,12 @@
+# Test Dependencies for Sign Detection Module
+
+# WebSocket client for testing
+websockets>=12.0
+
+# OpenCV for webcam testing (optional)
+opencv-python>=4.8.0
+
+# Already in main requirements.txt:
+# - pillow (for image processing)
+# - transformers (for ML model)
+# - torch (for ML backend)

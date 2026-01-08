@@ -30,6 +30,12 @@ class Settings(BaseSettings):
     OPENAI_MODEL: str = "gpt-4o-mini"
     OPENAI_EMBEDDING_MODEL: str = "text-embedding-3-small"
     
+    # Sign Detection Configuration
+    SIGN_DETECTION_MODEL: str = "prithivMLmods/Alphabet-Sign-Language-Detection"
+    SIGN_DETECTION_CONFIDENCE_THRESHOLD: float = 0.6
+    SIGN_DETECTION_DEVICE: int = -1  # -1 for CPU, 0 for GPU
+    HUGGINGFACE_TOKEN: Optional[str] = None  # Only needed for private models
+    
     class Config:
         env_file = ".env"
         case_sensitive = True
