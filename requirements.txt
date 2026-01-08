@@ -1,15 +1,32 @@
+# Core FastAPI Dependencies
 fastapi
 uvicorn[standard]
-supabase
 pydantic
 pydantic-settings
 python-multipart
-email-validator
-httpx
 python-dotenv
+
+# Authentication & Email
+email-validator
+
+# Database
+supabase
+
+# HTTP Client
+httpx
+
+# AI/ML - Chatbot
 langchain
 langchain-openai
 langchain-community
+langgraph
 duckduckgo-search
 ddgs
-langgraph
+
+# AI/ML - Sign Detection
+transformers
+torch
+torchvision
+pillow
+accelerate
+sentencepiece
