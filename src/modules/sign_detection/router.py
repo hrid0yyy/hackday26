@@ -64,6 +64,7 @@ async def websocket_predict(
                     response = {
                         "sign": result["sign"],
                         "confidence": round(result["confidence"], 4),
+                        "is_new": result["is_new"],  # Indicates if sign is new or repeat
                     }
 
                 # Send JSON response back to client

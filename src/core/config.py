@@ -34,6 +34,8 @@ class Settings(BaseSettings):
     SIGN_DETECTION_MODEL: str = "prithivMLmods/Alphabet-Sign-Language-Detection"
     SIGN_DETECTION_CONFIDENCE_THRESHOLD: float = 0.6
     SIGN_DETECTION_DEVICE: int = -1  # -1 for CPU, 0 for GPU
+    SIGN_DETECTION_MAX_REPEATS: int = 2  # Max times to output same sign
+    SIGN_DETECTION_COOLDOWN: float = 2.0  # Seconds before resetting count
     HUGGINGFACE_TOKEN: Optional[str] = None  # Only needed for private models
     
     class Config:

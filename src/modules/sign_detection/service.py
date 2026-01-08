@@ -7,6 +7,7 @@ a pre-trained Hugging Face Vision Transformer model.
 from __future__ import annotations
 
 import io
+import time
 from functools import cached_property
 from typing import TypedDict
 
@@ -21,6 +22,7 @@ class PredictionResult(TypedDict):
 
     sign: str
     confidence: float
+    is_new: bool  # Flag to indicate if this is a new sign or repeat
 
 
 class SignLanguageService:
@@ -33,6 +35,14 @@ class SignLanguageService:
     _instance: SignLanguageService | None = None
     _model_name: str = settings.SIGN_DETECTION_MODEL
     _confidence_threshold: float = settings.SIGN_DETECTION_CONFIDENCE_THRESHOLD
+
+    def __init__(self):
+        """Initialize the service with deduplication state."""
+        self._last_sign: str | None = None
+        self._last_sign_time: float = 0
+        self._same_sign_count: int = 0
+        self._max_repeats: int = settings.SIGN_DETECTION_MAX_REPEATS
+        self._cooldown_seconds: float = settings.SIGN_DETECTION_COOLDOWN
 
     def __new__(cls) -> SignLanguageService:
         """Singleton pattern to ensure only one service instance exists."""
@@ -55,15 +65,16 @@ class SignLanguageService:
         )
 
     async def predict_frame(self, image_bytes: bytes) -> PredictionResult | None:
-        """Predict sign language character from image bytes.
+        """Predict sign language character from image bytes with deduplication.
 
         Args:
             image_bytes: Raw image data in bytes format.
 
         Returns:
-            PredictionResult containing sign and confidence, or None if:
+            PredictionResult containing sign, confidence, and is_new flag, or None if:
             - Confidence is below threshold
             - Image processing fails
+            - Same sign detected more than max_repeats times
 
         Raises:
             ValueError: If image data is malformed or cannot be processed.
@@ -92,11 +103,39 @@ class SignLanguageService:
 
             # Extract sign character (label)
             sign = top_prediction["label"]
+            
+            current_time = time.time()
+            is_new = True
+
+            # Deduplication logic
+            if self._last_sign == sign:
+                # Same sign detected
+                time_since_last = current_time - self._last_sign_time
+                
+                # Reset count if cooldown period passed
+                if time_since_last > self._cooldown_seconds:
+                    self._same_sign_count = 1
+                    self._last_sign_time = current_time
+                    is_new = True
+                else:
+                    self._same_sign_count += 1
+                    
+                    # Suppress if exceeded max repeats
+                    if self._same_sign_count > self._max_repeats:
+                        return None
+                    
+                    is_new = False
+            else:
+                # New sign detected
+                self._last_sign = sign
+                self._last_sign_time = current_time
+                self._same_sign_count = 1
+                is_new = True
 
             # TODO: Insert log into Supabase
             # await self._log_prediction(sign, confidence)
 
-            return PredictionResult(sign=sign, confidence=confidence)
+            return PredictionResult(sign=sign, confidence=confidence, is_new=is_new)
 
         except (OSError, ValueError) as e:
             # Handle image processing errors
