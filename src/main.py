@@ -9,6 +9,7 @@ from src.modules.chat import router as chat_router
 from src.modules.sign_detection import router as sign_detection_router
 from src.modules.general import router as general_router
 from src.modules.speech_to_text import router as speech_to_text_router
+from src.modules.text_to_sign import router as text_to_sign_router
 
 # Create FastAPI app
 app = FastAPI(
@@ -35,6 +36,9 @@ app.include_router(chat_router)
 app.include_router(sign_detection_router)
 app.include_router(general_router)
 app.include_router(speech_to_text_router)
+
+
+app.include_router(text_to_sign_router)
 
 # Optional: Warmup the model at startup
 @app.on_event("startup")

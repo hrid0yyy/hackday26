@@ -1,34 +1,54 @@
-# FastAPI Authentication with Supabase
+# Hackday Accessibility Communication Backend
 
-A complete authentication system built with FastAPI and Supabase, featuring secure user management, JWT tokens, and comprehensive auth endpoints.
+A comprehensive FastAPI backend for an accessibility-focused communication platform. Enables seamless communication between users with different abilities through real-time sign language detection, speech-to-text conversion, and AI-powered text processing.
 
 ## Features
 
-✨ **Complete Authentication System**
-- User registration (sign up) with email verification
-- User login (sign in) with JWT tokens
-- Secure logout functionality
-- Password reset via email
-- Change password for authenticated users
-- Email verification
-- Refresh token mechanism
-- Rate limiting on sensitive endpoints
+🎯 **Core Modules**
+
+### 1. Authentication & User Management
+- User registration with disability status (deaf/mute/blind/normal)
+- JWT-based authentication
+- User profile management with accessibility preferences
+- Email verification and password reset
+- User search by email
+
+### 2. Real-time Sign Language Detection
+- WebSocket-based video frame processing
+- ML model: `prithivMLmods/Alphabet-Sign-Language-Detection`
+- Anti-spam deduplication (max 2 repeats, 2s cooldown)
+- AI-powered text cleaning with GPT-4o-mini
+- Automatic message storage in conversation history
+
+### 3. Speech-to-Text Conversion
+- Audio file transcription using OpenAI Whisper
+- Multiple audio format support
+- Automatic message storage with sender/receiver context
+
+### 4. Chat & Messaging
+- Send text messages between users
+- Retrieve conversation history (bidirectional)
+- Pagination support for chat history
+- Messages ordered by most recent first
+
+### 5. AI Chatbot Integration
+- Context-aware conversational AI
+- Supabase vector store integration
+- OpenAI embeddings for semantic search
 
 🔐 **Security Features**
-- Strong password validation (uppercase, lowercase, digit, special char)
 - JWT access and refresh tokens
-- Token expiration handling
+- Supabase Row Level Security (RLS)
+- Service role key for admin operations
+- Strong password validation
 - HTTP Bearer authentication
-- Password hashing with bcrypt
-- Prevention of email enumeration attacks
 
 🏗️ **Architecture**
-- Clean separation of concerns (routes, services, models, utilities)
-- Supabase integration for auth and user management
-- Pydantic models for request/response validation
-- Dependency injection for authentication
-- Comprehensive error handling
-- CORS support
+- Modular monolith design
+- Clean separation of concerns
+- Async/await for optimal performance
+- Pydantic models for validation
+- CORS support for frontend integration
 
 ## Project Structure
 
@@ -37,19 +57,48 @@ backend/
 ├── src/
 │   ├── main.py                          # FastAPI application entry point
 │   ├── core/
-│   │   ├── __init__.py                  # Core module exports
-│   │   ├── config.py                    # Application settings
-│   │   └── db.py                        # Supabase client initialization
+│   │   ├── config.py                    # Application settings & environment variables
+│   │   └── db.py                        # Supabase client initialization (anon + admin)
 │   └── modules/
-│       └── authentication/
-│           ├── __init__.py              # Authentication module exports
-│           ├── models.py                # Pydantic models
-│           ├── service.py               # Business logic layer
-│           ├── routes.py                # API endpoints
-│           ├── dependencies.py          # Authentication dependencies
-│           └── utils.py                 # Utility functions
+│       ├── authentication/              # Auth & user management
+│       │   ├── models.py                # Request/response models with user status
+│       │   ├── service.py               # Sign up, sign in, profile management
+│       │   ├── routes.py                # Auth API endpoints
+│       │   ├── dependencies.py          # JWT authentication dependencies
+│       │   └── utils.py                 # Password validation utilities
+│       ├── sign_detection/              # Real-time sign language detection
+│       │   ├── models.py                # Prediction models
+│       │   ├── service.py               # ML model, deduplication, LLM cleaning
+│       │   ├── routes.py                # WebSocket + text processing endpoints
+│       │   └── dependencies.py          # Service dependency injection
+│       ├── speech_to_text/              # Audio transcription
+│       │   ├── models.py                # Audio conversion models
+│       │   ├── service.py               # OpenAI Whisper integration
+│       │   └── routes.py                # Audio upload endpoint
+│       ├── chat/                        # Messaging & conversation history
+│       │   ├── models.py                # Message & history models
+│       │   ├── service.py               # Chat operations
+│       │   └── routes.py                # Send message, get history endpoints
+│       ├── general/                     # General utilities
+│       │   ├── models.py                # User search models
+│       │   ├── service.py               # User search logic
+│       │   └── routes.py                # Search endpoints
+│       └── chatbot/                     # AI chatbot (optional)
+│           ├── agent.py                 # Conversational AI logic
+│           ├── models.py                # Chat models
+│           ├── service.py               # Chatbot service
+│           └── routes.py                # Chatbot endpoints
+├── documentations/
+│   ├── profiles_table.sql               # User profiles database schema
+│   ├── sign_detections_table.sql        # Chat conversation schema
+│   ├── TESTING_GUIDE.md                 # Testing documentation
+│   └── FRONTEND_SIGN_DETECTION_GUIDE.md # Frontend integration guide
+├── tests/
+│   └── test_full_workflow.py            # Integration tests
 ├── requirements.txt                      # Python dependencies
-├── .env.example                         # Environment variables template
+├── .env                                 # Environment variables
+├── run.bat                              # Windows run script
+├── push.bat                             # Windows git push script
 └── README.md                            # This file
 ```
 
@@ -57,8 +106,9 @@ backend/
 
 ### 1. Prerequisites
 
-- Python 3.8+
+- Python 3.12+ (tested with 3.12.6)
 - Supabase account and project
+- OpenAI API key (for LLM text cleaning and Whisper)
 - Virtual environment (recommended)
 
 ### 2. Install Dependencies
@@ -80,20 +130,36 @@ pip install -r requirements.txt
 ### 3. Configure Environment
 
 ```bash
-# Copy environment template
-cp .env.example .env
-
-# Edit .env and add your credentials
-# Required: SUPABASE_URL, SUPABASE_KEY, JWT_SECRET_KEY
+# Create .env file with the following variables
 ```
 
-**Generate JWT Secret Key:**
-```bash
-# Using Python
-python -c "import secrets; print(secrets.token_hex(32))"
+**Required Environment Variables:**
 
-# Or using OpenSSL
-openssl rand -hex 32
+```env
+# Supabase Configuration
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+
+# Application Configuration
+APP_NAME=Hackday FastAPI Backend
+APP_VERSION=1.0.0
+DEBUG=True
+
+# CORS Configuration
+CORS_ORIGINS=["http://localhost:3000","http://localhost:5173"]
+
+# Frontend URL
+FRONTEND_URL=http://localhost:3000
+
+# OpenAI Configuration
+OPENAI_API_KEY=your-openai-api-key
+OPENAI_MODEL=gpt-4o-mini
+OPENAI_EMBEDDING_MODEL=text-embedding-3-small
+
+# Sign Detection Configuration
+SIGN_DETECTION_MAX_REPEATS=2  # Max times same sign appears consecutively
+SIGN_DETECTION_COOLDOWN=2.0    # Seconds before sign can repeat
 ```
 
 ### 4. Supabase Setup
@@ -105,49 +171,128 @@ openssl rand -hex 32
    - anon/public key → `SUPABASE_KEY`
    - service_role key → `SUPABASE_SERVICE_ROLE_KEY`
 4. Enable Email Auth in Authentication > Providers
+5. Run database migrations:
+
+**Create profiles table:**
+```sql
+-- See documentations/profiles_table.sql
+CREATE TABLE profiles (
+    id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    status TEXT CHECK (status IN ('mute', 'deaf', 'blind', 'normal')) DEFAULT 'normal',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Enable RLS
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+
+-- Policies
+CREATE POLICY "Users can view own profile" ON profiles FOR SELECT USING (auth.uid() = id);
+CREATE POLICY "Users can update own profile" ON profiles FOR UPDATE USING (auth.uid() = id);
+```
+
+**Create chat_conversation table:**
+```sql
+-- See documentations/sign_detections_table.sql
+CREATE TABLE chat_conversation (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    sender_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    receiver_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    raw_text TEXT,
+    cleaned_text TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Enable RLS
+ALTER TABLE chat_conversation ENABLE ROW LEVEL SECURITY;
+
+-- Policies
+CREATE POLICY "Users can view own conversations" ON chat_conversation 
+    FOR SELECT USING (auth.uid() = sender_id OR auth.uid() = receiver_id);
+```
 
 ### 5. Run the Application
 
 ```bash
-# Development mode with auto-reload
+# Windows (using run.bat)
+.\run.bat
+
+# Or manually
 uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
 
 # Production mode
-uvicorn src.main:app --host 0.0.0.0 --port 8000
+uvicorn src.main:app --host 0.0.0.0 --port 8000 --workers 4
 ```
+
+The ML model will automatically download on first startup (this may take a few minutes).
+
+Access the API:
+- **Swagger UI**: http://localhost:8000/docs
+- **ReDoc**: http://localhost:8000/redoc
+- **Base URL**: http://localhost:8000
 
 ## API Endpoints
 
 ### Base URL: `http://localhost:8000`
 
-### Authentication Endpoints
+### 🔐 Authentication (`/auth`)
 
 | Method | Endpoint | Description | Auth Required |
 |--------|----------|-------------|---------------|
-| POST | `/auth/signup` | Register new user | No |
-| POST | `/auth/signin` | Sign in user | No |
+| POST | `/auth/signup` | Register new user with status | No |
+| POST | `/auth/signin` | Sign in user (returns status) | No |
 | POST | `/auth/signout` | Sign out user | Yes |
 | POST | `/auth/forgot-password` | Request password reset | No |
 | POST | `/auth/reset-password` | Reset password with token | No |
 | POST | `/auth/change-password` | Change password | Yes |
-| POST | `/auth/refresh` | Refresh access token | Yes (Refresh Token) |
-| POST | `/auth/verify-email` | Verify email with token | No |
-| POST | `/auth/resend-verification` | Resend verification email | No |
+| POST | `/auth/refresh` | Refresh access token | Yes |
 | GET | `/auth/me` | Get current user info | Yes |
-| GET | `/auth/health` | Health check | No |
 
-### General Endpoints
+### 🎥 Sign Language Detection (`/sign-detection`)
+
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| WebSocket | `/sign-detection/ws/predict` | Real-time sign detection | No |
+| POST | `/sign-detection/process-text` | Clean text with LLM & save | Yes (JWT) |
+
+### 🎤 Speech-to-Text (`/speech-to-text`)
+
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| POST | `/speech-to-text/convert` | Convert audio to text | No |
+
+### 💬 Chat (`/chat`)
+
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| POST | `/chat/send` | Send text message | No |
+| POST | `/chat/history` | Get conversation history | No |
+
+### 👥 General (`/general`)
+
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| POST | `/general/search-user` | Search user by email | No |
+| GET | `/general/search-user` | Search user by email (GET) | No |
+
+### 🤖 Chatbot (`/chatbot`)
+
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| POST | `/chatbot/chat` | Chat with AI assistant | No |
+
+### 🏥 Health
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/` | API welcome message |
-| GET | `/health` | Application health check |
-| GET | `/docs` | Interactive API documentation (Swagger UI) |
-| GET | `/redoc` | Alternative API documentation (ReDoc) |
+| GET | `/health` | Health check |
+| GET | `/docs` | Swagger UI documentation |
+| GET | `/redoc` | ReDoc documentation |
 
 ## API Usage Examples
 
-### 1. Sign Up
+### 1. Sign Up with Status
 
 ```bash
 curl -X POST "http://localhost:8000/auth/signup" \
@@ -155,7 +300,8 @@ curl -X POST "http://localhost:8000/auth/signup" \
   -d '{
     "email": "user@example.com",
     "password": "SecurePass123!",
-    "full_name": "John Doe"
+    "full_name": "John Doe",
+    "status": "deaf"
   }'
 ```
 
@@ -170,8 +316,9 @@ curl -X POST "http://localhost:8000/auth/signup" \
     "id": "uuid",
     "email": "user@example.com",
     "full_name": "John Doe",
+    "status": "deaf",
     "email_verified": false,
-    "created_at": "2026-01-07T...",
+    "created_at": "2026-01-08T...",
     "last_sign_in_at": null
   }
 }
@@ -188,42 +335,158 @@ curl -X POST "http://localhost:8000/auth/signin" \
   }'
 ```
 
-### 3. Get Current User
+### 3. Send Text Message
 
 ```bash
-curl -X GET "http://localhost:8000/auth/me" \
-  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
-```
-
-### 4. Forgot Password
-
-```bash
-curl -X POST "http://localhost:8000/auth/forgot-password" \
+curl -X POST "http://localhost:8000/chat/send" \
   -H "Content-Type: application/json" \
   -d '{
-    "email": "user@example.com",
-    "redirect_url": "http://localhost:3000/reset-password"
+    "sender_id": "sender-uuid",
+    "receiver_id": "receiver-uuid",
+    "message": "Hello, how are you?"
   }'
 ```
 
-### 5. Change Password
+### 4. Get Conversation History
 
 ```bash
-curl -X POST "http://localhost:8000/auth/change-password" \
+curl -X POST "http://localhost:8000/chat/history" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user_id": "current-user-uuid",
+    "other_user_id": "other-user-uuid",
+    "limit": 50,
+    "offset": 0
+  }'
+```
+
+**Response:**
+```json
+{
+  "user_id": "other-user-uuid",
+  "messages": [
+    {
+      "id": "msg-uuid",
+      "sender_id": "sender-uuid",
+      "receiver_id": "receiver-uuid",
+      "raw_text": "hello",
+      "cleaned_text": "Hello",
+      "created_at": "2026-01-08T10:30:00"
+    }
+  ],
+  "total_count": 45
+}
+```
+
+### 5. Speech-to-Text Conversion
+
+```bash
+curl -X POST "http://localhost:8000/speech-to-text/convert" \
+  -F "audio=@recording.mp3" \
+  -F "sender_id=sender-uuid" \
+  -F "receiver_id=receiver-uuid"
+```
+
+**Response:**
+```json
+{
+  "id": "msg-uuid",
+  "sender_id": "sender-uuid",
+  "receiver_id": "receiver-uuid",
+  "transcription": "Hello, this is a test message",
+  "created_at": "2026-01-08T10:30:00"
+}
+```
+
+### 6. Search User by Email
+
+```bash
+curl -X POST "http://localhost:8000/general/search-user" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com"
+  }'
+```
+
+### 7. Real-time Sign Detection (WebSocket)
+
+```javascript
+// Frontend JavaScript example
+const ws = new WebSocket("ws://localhost:8000/sign-detection/ws/predict");
+
+ws.onopen = () => {
+    // Send base64 encoded image
+    ws.send(JSON.stringify({
+        image: "base64_encoded_jpeg_string"
+    }));
+};
+
+ws.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+    console.log("Detected sign:", data.predicted_class);
+    console.log("Is new:", data.is_new);
+};
+```
+
+### 8. Process Detected Text
+
+```bash
+curl -X POST "http://localhost:8000/sign-detection/process-text" \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "old_password": "SecurePass123!",
-    "new_password": "NewSecurePass456!"
+    "text": "hellohowareyou",
+    "receiver_id": "receiver-uuid"
   }'
 ```
 
-### 6. Refresh Token
-
-```bash
-curl -X POST "http://localhost:8000/auth/refresh" \
-  -H "Authorization: Bearer YOUR_REFRESH_TOKEN"
+**Response:**
+```json
+{
+  "id": "msg-uuid",
+  "sender_id": "sender-uuid",
+  "receiver_id": "receiver-uuid",
+  "raw_text": "hellohowareyou",
+  "cleaned_text": "hello how are you",
+  "created_at": "2026-01-08T10:30:00"
+}
 ```
+
+## User Status Types
+
+The system supports four user accessibility statuses:
+
+| Status | Description | Use Case |
+|--------|-------------|----------|
+| `deaf` | User cannot hear | Requires visual communication (sign language, text) |
+| `mute` | User cannot speak | Can use sign language or typing |
+| `blind` | User cannot see | Requires audio output (text-to-speech) |
+| `normal` | No accessibility needs | Standard text/audio communication |
+
+Status is set during signup and returned in authentication responses.
+
+## Sign Detection Workflow
+
+1. **Frontend**: User starts video recording
+2. **WebSocket**: Frames sent to `/sign-detection/ws/predict` every 500ms
+3. **Backend**: ML model detects signs in real-time
+4. **Deduplication**: Same sign limited to 2 repeats, 2-second cooldown
+5. **Frontend**: Accumulates detected words
+6. **Stop Recording**: User stops video
+7. **Process Text**: Call `/sign-detection/process-text`
+8. **AI Cleaning**: GPT-4o-mini fixes "hellohowareyou" → "hello how are you"
+9. **Database**: Message saved to `chat_conversation` table
+10. **Display**: Cleaned message appears in chat
+
+See `documentations/FRONTEND_SIGN_DETECTION_GUIDE.md` for complete integration guide.
+
+## Speech-to-Text Workflow
+
+1. **Frontend**: User records audio
+2. **Upload**: Send audio file to `/speech-to-text/convert`
+3. **Transcription**: OpenAI Whisper converts to text
+4. **Database**: Message saved to `chat_conversation` table
+5. **Response**: Transcribed text returned and displayed
 
 ## Password Requirements
 
@@ -255,80 +518,283 @@ Common HTTP status codes:
 - `409` - Conflict (user already exists)
 - `500` - Internal Server Error
 
-## Security Best Practices
+## Dependencies
 
-1. **Never commit `.env` file** - Always use `.env.example` as template
-2. **Use strong JWT secret keys** - Generate with `openssl rand -hex 32`
-3. **Keep service_role_key secure** - Only use server-side
-4. **Enable HTTPS in production** - Never send credentials over HTTP
-5. **Configure CORS properly** - Restrict to your frontend domain
-6. **Implement rate limiting** - Prevent brute force attacks
-7. **Regular token rotation** - Use refresh tokens to get new access tokens
-8. **Monitor auth logs** - Check Supabase dashboard for suspicious activity
+Key Python packages:
 
-## Rate Limiting
+```
+fastapi>=0.109.0          # Web framework
+uvicorn[standard]>=0.27.0 # ASGI server
+supabase>=2.3.4           # Database & auth
+pydantic>=2.5.3           # Data validation
+python-multipart>=0.0.6   # File uploads
+transformers>=4.37.0      # Hugging Face ML models
+torch>=2.1.2              # PyTorch for ML
+pillow>=10.2.0            # Image processing
+openai>=1.10.0            # OpenAI API (GPT, Whisper)
+python-dotenv>=1.0.0      # Environment variables
+```
 
-Rate limiting is configured for sensitive endpoints:
-- Auth endpoints: 5 requests per minute
-- Password reset: 3 requests per 5 minutes
+For complete list, see `requirements.txt`.
 
-To implement actual rate limiting, integrate with Redis:
-```python
-# TODO: Implement Redis-based rate limiting
+## Machine Learning Models
+
+### Sign Language Detection
+- **Model**: `prithivMLmods/Alphabet-Sign-Language-Detection`
+- **Framework**: Hugging Face Transformers
+- **Input**: Base64 encoded JPEG images
+- **Output**: Predicted sign class + confidence
+- **First Run**: Model downloads automatically (~500MB)
+- **Device**: CPU (configurable to GPU)
+
+### Text Cleaning
+- **Model**: OpenAI GPT-4o-mini
+- **Purpose**: Fix concatenated text from sign detection
+- **Example**: "hellohowareyou" → "hello how are you"
+
+### Speech Recognition
+- **Model**: OpenAI Whisper
+- **Supported Formats**: mp3, mp4, mpeg, mpga, m4a, wav, webm
+- **Max File Size**: 25MB
+
+## Testing
+
+### Run Integration Tests
+
+```bash
+# Install test dependencies
+pip install opencv-python websockets requests
+
+# Run full workflow test
+python tests/test_full_workflow.py
+```
+
+### Manual Testing with Webcam
+
+See `documentations/TESTING_GUIDE.md` for detailed testing instructions.
+
+### Test WebSocket Connection
+
+```bash
+# Using Python websockets library
+python -c "
+import asyncio
+import websockets
+import json
+
+async def test():
+    uri = 'ws://localhost:8000/sign-detection/ws/predict'
+    async with websockets.connect(uri) as ws:
+        print('Connected!')
+
+asyncio.run(test())
+"
 ```
 
 ## Development Tips
 
 ### Interactive API Documentation
 
-Visit `http://localhost:8000/docs` for Swagger UI - you can test all endpoints directly!
+Visit http://localhost:8000/docs for Swagger UI - test all endpoints with built-in interface!
 
-### Testing with cURL
+### Frontend Integration
 
-All examples use cURL. For a better experience, use:
-- [Postman](https://www.postman.com/)
-- [Insomnia](https://insomnia.rest/)
-- [HTTPie](https://httpie.io/)
+- **WebSocket URL**: `ws://localhost:8000/sign-detection/ws/predict`
+- **API Base URL**: `http://localhost:8000`
+- **CORS**: Add your frontend URL to `CORS_ORIGINS` in `.env`
+
+Complete React component example available in `documentations/FRONTEND_SIGN_DETECTION_GUIDE.md`.
 
 ### Database Management
 
 Use Supabase Dashboard to:
-- View user table
+- View `profiles` and `chat_conversation` tables
 - Monitor authentication logs
-- Configure email templates
-- Set up email providers (SMTP)
+- Test RLS policies
+- Run SQL queries
+
+### Model Warmup
+
+The sign detection model loads on application startup. First request may be slow as the model initializes. Consider adding a warmup endpoint call in your deployment script.
+
+### Performance Optimization
+
+- **Frame Rate**: Adjust WebSocket frame interval (default: 500ms)
+- **Image Quality**: Lower JPEG quality for faster processing
+- **Caching**: Consider Redis for ML model predictions
+- **Workers**: Use multiple Uvicorn workers in production
 
 ## Troubleshooting
 
+### ML Model Not Loading
+- Check internet connection (model downloads on first run)
+- Verify disk space (~500MB required)
+- Check logs for model loading errors
+- Ensure `transformers` and `torch` are installed
+
+### WebSocket Connection Failed
+- Verify backend is running on port 8000
+- Check firewall settings
+- Ensure WebSocket URL uses `ws://` not `http://`
+- Test with `tests/test_full_workflow.py`
+
 ### "Could not validate credentials"
-- Check if token is expired
-- Verify JWT_SECRET_KEY matches
-- Ensure Bearer token format: `Bearer <token>`
+- Check if JWT token is expired
+- Verify Bearer token format: `Bearer <token>`
+- Ensure token was obtained from `/auth/signin` or `/auth/signup`
 
-### "User with this email already exists"
-- Email is already registered
-- Check Supabase dashboard > Authentication > Users
+### Sign Detection Not Working
+- Ensure good lighting conditions
+- Position hand clearly in front of camera
+- Check that model loaded successfully (startup logs)
+- Verify image is base64 encoded JPEG
 
-### Email not sending
-- Configure SMTP in Supabase > Project Settings > Auth
-- Check email templates
-- Verify email provider settings
+### Audio Upload Failed
+- Check file format (mp3, wav, etc.)
+- Verify file size < 25MB
+- Ensure OpenAI API key is valid
+- Check `OPENAI_API_KEY` in `.env`
 
-### CORS errors
-- Add frontend URL to CORS_ORIGINS in .env
-- Restart the server after changing .env
+### Text Not Cleaning Properly
+- Verify OpenAI API key has credits
+- Check `OPENAI_MODEL=gpt-4o-mini` in `.env`
+- Review backend logs for LLM errors
+
+### Messages Not Saving
+- Verify `sender_id` and `receiver_id` are valid UUIDs
+- Check Supabase RLS policies
+- Ensure service_role_key is correct for admin operations
+- Review `chat_conversation` table structure
+
+### CORS Errors
+- Add frontend URL to `CORS_ORIGINS` in `.env`
+- Restart server after changing `.env`
+- Format: `["http://localhost:3000","http://localhost:5173"]`
+
+## Production Deployment
+
+### Environment Configuration
+
+```env
+DEBUG=False
+CORS_ORIGINS=["https://your-frontend-domain.com"]
+```
+
+### Security Checklist
+
+- [ ] Set `DEBUG=False`
+- [ ] Use HTTPS for all endpoints
+- [ ] Restrict CORS to production domain only
+- [ ] Keep `.env` file secure (never commit)
+- [ ] Rotate API keys regularly
+- [ ] Enable Supabase RLS policies
+- [ ] Use environment-specific service_role_key
+- [ ] Implement rate limiting (Redis recommended)
+- [ ] Monitor API usage and costs
+- [ ] Set up error tracking (Sentry, etc.)
+
+### Deployment Options
+
+**Docker:**
+```dockerfile
+FROM python:3.12-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
+CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+```
+
+**Cloud Platforms:**
+- **Railway**: Connect GitHub repo, auto-deploys
+- **Render**: Web service from Git
+- **AWS EC2**: Full control, requires manual setup
+- **Google Cloud Run**: Serverless container deployment
+- **Heroku**: Easy deployment with Procfile
+
+### Performance Tuning
+
+```bash
+# Multiple workers for production
+uvicorn src.main:app --host 0.0.0.0 --port 8000 --workers 4
+
+# With environment variable workers
+gunicorn src.main:app -w 4 -k uvicorn.workers.UvicornWorker
+```
+
+### Monitoring
+
+- Track OpenAI API usage (costs)
+- Monitor Supabase database size
+- Set up health check alerts
+- Log ML model inference times
+- Track WebSocket connection counts
+
+## Documentation
+
+- **API Docs**: http://localhost:8000/docs (Swagger UI)
+- **ReDoc**: http://localhost:8000/redoc (Alternative API docs)
+- **Frontend Guide**: `documentations/FRONTEND_SIGN_DETECTION_GUIDE.md`
+- **Testing Guide**: `documentations/TESTING_GUIDE.md`
+- **Database Schema**: `documentations/*.sql`
 
 ## Future Enhancements
 
-- [ ] Redis-based rate limiting
-- [ ] OAuth providers (Google, GitHub, etc.)
-- [ ] Two-factor authentication (2FA)
-- [ ] Session management
-- [ ] Account lockout after failed attempts
-- [ ] Audit logs
-- [ ] User roles and permissions
-- [ ] API key authentication
-- [ ] WebSocket authentication
+### Planned Features
+- [ ] Text-to-sign language conversion endpoint
+- [ ] Video message storage and playback
+- [ ] Group chat support
+- [ ] Real-time notifications (WebSocket broadcast)
+- [ ] Message read receipts
+- [ ] Typing indicators
+- [ ] Image/video file uploads
+- [ ] Voice message recording UI
+- [ ] Sign language dictionary API
+- [ ] User preferences for accessibility
+- [ ] Multi-language support
+- [ ] Dark mode preference
+- [ ] Message search functionality
+
+### Technical Improvements
+- [ ] Redis caching for ML predictions
+- [ ] Rate limiting with Redis
+- [ ] Horizontal scaling support
+- [ ] Message queue for async processing
+- [ ] CDN for static assets
+- [ ] WebRTC for peer-to-peer video
+- [ ] Automated testing suite
+- [ ] Performance benchmarks
+- [ ] API versioning
+- [ ] GraphQL alternative endpoint
+
+## Contributing
+
+Contributions are welcome! Please follow these guidelines:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+### Code Style
+
+- Follow PEP 8 guidelines
+- Use type hints where possible
+- Add docstrings to functions/classes
+- Keep functions focused and small
+- Write descriptive commit messages
+
+## Tech Stack
+
+- **Framework**: FastAPI 0.109+
+- **Database**: Supabase (PostgreSQL)
+- **Authentication**: Supabase Auth (JWT)
+- **ML Framework**: Hugging Face Transformers + PyTorch
+- **AI Services**: OpenAI (GPT-4o-mini, Whisper)
+- **Real-time**: WebSocket (FastAPI native)
+- **Validation**: Pydantic v2
+- **Server**: Uvicorn (ASGI)
 
 ## License
 
@@ -337,10 +803,20 @@ MIT License - feel free to use in your projects!
 ## Support
 
 For issues or questions:
-1. Check the [FastAPI documentation](https://fastapi.tiangolo.com/)
-2. Review [Supabase Auth docs](https://supabase.com/docs/guides/auth)
-3. Open an issue in the repository
+1. Check the documentation in `/documentations`
+2. Review [FastAPI docs](https://fastapi.tiangolo.com/)
+3. Check [Supabase docs](https://supabase.com/docs)
+4. Review [OpenAI API docs](https://platform.openai.com/docs)
+5. Open an issue in the repository
+
+## Credits
+
+- **Sign Language Model**: [prithivMLmods/Alphabet-Sign-Language-Detection](https://huggingface.co/prithivMLmods/Alphabet-Sign-Language-Detection)
+- **AI Services**: OpenAI (GPT-4o-mini, Whisper)
+- **Backend**: Supabase
+- **Framework**: FastAPI
 
 ---
 
-**Built with ❤️ using FastAPI and Supabase**
+**Built for Hackday 2026** 🚀  
+*Enabling accessible communication for everyone*
