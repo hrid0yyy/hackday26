@@ -61,10 +61,11 @@ class AuthenticationService:
                 )
             
             # Create profile record in profiles table
+            user_status = request.status or "normal"
             try:
                 profile_data = {
                     "id": response.user.id,
-                    "status": request.status or "normal"
+                    "status": user_status
                 }
                 self.supabase.table("profiles").insert(profile_data).execute()
             except Exception as profile_error:
@@ -82,6 +83,7 @@ class AuthenticationService:
                 id=response.user.id,
                 email=response.user.email,
                 full_name=request.full_name,
+                status=user_status,
                 email_verified=response.user.email_confirmed_at is not None,
                 created_at=response.user.created_at,
                 last_sign_in_at=response.user.last_sign_in_at
@@ -137,11 +139,21 @@ class AuthenticationService:
             # Get user metadata
             user_metadata = response.user.user_metadata or {}
             
+            # Fetch user status from profiles table
+            user_status = None
+            try:
+                profile_response = self.supabase.table("profiles").select("status").eq("id", response.user.id).execute()
+                if profile_response.data:
+                    user_status = profile_response.data[0].get("status")
+            except Exception as profile_error:
+                print(f"Warning: Failed to fetch profile: {profile_error}")
+            
             # Prepare user response
             user_response = UserResponse(
                 id=response.user.id,
                 email=response.user.email,
                 full_name=user_metadata.get("full_name"),
+                status=user_status,
                 email_verified=response.user.email_confirmed_at is not None,
                 created_at=response.user.created_at,
                 last_sign_in_at=response.user.last_sign_in_at

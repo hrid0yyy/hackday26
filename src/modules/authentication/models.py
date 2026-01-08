@@ -127,6 +127,7 @@ class UserResponse(BaseModel):
     id: str = Field(..., description="User ID")
     email: str = Field(..., description="User email address")
     full_name: Optional[str] = Field(None, description="User's full name")
+    status: Optional[str] = Field(None, description="User status (mute, deaf, blind, normal)")
     email_verified: bool = Field(default=False, description="Email verification status")
     created_at: Optional[datetime] = Field(None, description="Account creation timestamp")
     last_sign_in_at: Optional[datetime] = Field(None, description="Last sign in timestamp")

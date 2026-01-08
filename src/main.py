@@ -4,7 +4,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from src.core.config import settings
 from src.modules.authentication import router as auth_router
-from src.modules.chatbot import router as chat_router
+from src.modules.chatbot import router as chatbot_router
+from src.modules.chat import router as chat_router
 from src.modules.sign_detection import router as sign_detection_router
 from src.modules.general import router as general_router
 from src.modules.speech_to_text import router as speech_to_text_router
@@ -29,6 +30,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(auth_router)
+app.include_router(chatbot_router)
 app.include_router(chat_router)
 app.include_router(sign_detection_router)
 app.include_router(general_router)
